@@ -34,8 +34,8 @@ def neighbourhood(x, y, width, height, kernelSize):
     minY = int(max(y - kernelOffset, 0))
     maxY = int(min(y + kernelOffset, height - 1))
 
-    for X in range(minX, maxX):
-        for Y in range(minY, maxY):
+    for X in range(minX, maxX + 1):
+        for Y in range(minY, maxY + 1):
             yield (X, Y)
 
 
