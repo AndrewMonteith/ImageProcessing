@@ -8,7 +8,7 @@ import numpy as np
 from math import exp, sqrt, pi
 
 # ----------------- / Constants
-INPUT_IMAGE = 'GoodBoy.png'
+INPUT_IMAGE = 'test2.png'
 
 # ------------------ / Filtering
 
@@ -43,12 +43,18 @@ def createGauss(sigma):
     k = 1 / (sigma * sqrt(2 * pi))
     K = 1 / ((-2) * sigma**2)
 
-    return lambda x: k * np.exp(x**2 * K)
+    return lambda x: k * exp(x**2 * K)
 
 
 def bilaterial_filter(img, sigmaDistance, sigmaIntensity, kernelSize=5):
-    gaussDist = createGauss(sigmaDistance)
-    gaussIntensity = createGauss(sigmaIntensity)
+
+    sqrtTau = sqrt(2 * pi)
+
+    def gaussDist(x):
+        return (1 / (sigmaDistance * sqrtTau)) * exp(- (x**2) / (2 * sigmaDistance**2))
+
+    def gaussIntensity(x):
+        return (1 / (sigmaIntensity * sqrtTau)) * exp(- (x**2) / (2 * sigmaIntensity**2))
 
     (height, width, _) = img.shape
 
@@ -57,15 +63,17 @@ def bilaterial_filter(img, sigmaDistance, sigmaIntensity, kernelSize=5):
         normB, normG, normR = 0, 0, 0
 
         (origB, origG, origR) = img[y, x]
+        intensities = [gaussIntensity(x) for x in range(0, 256)]
 
         for (nX, nY) in neighbourhood(x, y, width, height, kernelSize):
-            (b, g, r) = img[nY, nX]
+            (b, g, r) = map(int, img[nY, nX])
 
             # Computing Coefficients
             distCoef = gaussDist(sqrt((x - nX)**2 + (y - nY)**2))
-            coefB = distCoef * gaussIntensity(origB - b)
-            coefG = distCoef * gaussIntensity(origG - g)
-            coefR = distCoef * gaussIntensity(origR - r)
+
+            coefB = distCoef * intensities[abs(origB - b)]
+            coefG = distCoef * intensities[abs(origG - g)]
+            coefR = distCoef * intensities[abs(origR - r)]
 
             normB += coefB
             normG += coefG
@@ -80,19 +88,27 @@ def bilaterial_filter(img, sigmaDistance, sigmaIntensity, kernelSize=5):
     result = createBlank(width, height)
 
     for y in range(0, height):
+        print(y, height)
         for x in range(0, width):
             result[y, x] = process_pixel(x, y)
 
     return result
-
 
     # ------------------ / Runner
 if __name__ == "__main__":
     img = cv2.imread(INPUT_IMAGE, cv2.IMREAD_COLOR)
 
     if img is not None:
-        filtered = bilaterial_filter(img, sigmaDistance=3, sigmaIntensity=80.0)
+        sigmaIntensity = 20
+        sigmaDistance = 18
 
-        cv2.imwrite('filtered.png', filtered)
+        filtered = bilaterial_filter(
+            img, sigmaDistance, sigmaIntensity, kernelSize=5)
+
+        filtered_cv = cv2.bilateralFilter(
+            img, 5, sigmaIntensity, sigmaDistance)
+
+        cv2.imwrite('small_mine.png', filtered)
+        cv2.imwrite('small_cv2.png', filtered_cv)
     else:
         print("Couldn't find image " + INPUT_IMAGE)
