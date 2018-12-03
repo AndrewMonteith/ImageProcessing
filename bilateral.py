@@ -49,12 +49,8 @@ def createGauss(sigma):
 def bilaterial_filter(img, sigmaDistance, sigmaIntensity, kernelSize=5):
 
     sqrtTau = sqrt(2 * pi)
-
-    def gaussDist(x):
-        return (1 / (sigmaDistance * sqrtTau)) * exp(- (x**2) / (2 * sigmaDistance**2))
-
-    def gaussIntensity(x):
-        return (1 / (sigmaIntensity * sqrtTau)) * exp(- (x**2) / (2 * sigmaIntensity**2))
+    gaussDist = createGauss(sigmaDistance)
+    gaussIntensity = createGauss(sigmaIntensity)
 
     (height, width, _) = img.shape
 
