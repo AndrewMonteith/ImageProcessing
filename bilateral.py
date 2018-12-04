@@ -5,10 +5,11 @@
 
 import cv2
 import numpy as np
-from math import exp, sqrt, pi
+from math import exp, sqrt, pi, e
 
 # ----------------- / Constants
-INPUT_IMAGE = 'test2.png'
+INPUT_NON_FLASH = 'test3a.jpg'
+INPUT_FLASH = 'test3b.jpg'
 
 # ------------------ / Filtering
 
@@ -43,33 +44,33 @@ def createGauss(sigma):
     k = 1 / (sigma * sqrt(2 * pi))
     K = 1 / ((-2) * sigma**2)
 
-    return lambda x: k * exp(x**2 * K)
+    return lambda x: k * e ** (x**2 * K)
 
 
-def bilaterial_filter(img, sigmaDistance, sigmaIntensity, kernelSize=5):
-
-    sqrtTau = sqrt(2 * pi)
+def joint_bilateral_filter(imgNonFlash, imgFlash, sigmaDistance, sigmaIntensity, kernelSize=5):
     gaussDist = createGauss(sigmaDistance)
     gaussIntensity = createGauss(sigmaIntensity)
 
-    (height, width, _) = img.shape
+    (height, width, _) = imgNonFlash.shape
 
+    intensities = [gaussIntensity(x) for x in range(0, 256)]
+    
     def process_pixel(x, y):
         newB, newG, newR = 0, 0, 0
         normB, normG, normR = 0, 0, 0
 
-        (origB, origG, origR) = img[y, x]
-        intensities = [gaussIntensity(x) for x in range(0, 256)]
-
+        (bF, gF, rF) = imgFlash[y, x]
+        
         for (nX, nY) in neighbourhood(x, y, width, height, kernelSize):
-            (b, g, r) = map(int, img[nY, nX])
+            (b, g, r) = imgNonFlash[nY, nX]
+            (nB, nG, nR) = imgFlash[nY, nX]
 
             # Computing Coefficients
             distCoef = gaussDist(sqrt((x - nX)**2 + (y - nY)**2))
 
-            coefB = distCoef * intensities[abs(origB - b)]
-            coefG = distCoef * intensities[abs(origG - g)]
-            coefR = distCoef * intensities[abs(origR - r)]
+            coefB = distCoef * intensities[abs(nB - bF)]
+            coefG = distCoef * intensities[abs(nG - gF)]
+            coefR = distCoef * intensities[abs(nR - rF)]
 
             normB += coefB
             normG += coefG
@@ -92,19 +93,16 @@ def bilaterial_filter(img, sigmaDistance, sigmaIntensity, kernelSize=5):
 
     # ------------------ / Runner
 if __name__ == "__main__":
-    img = cv2.imread(INPUT_IMAGE, cv2.IMREAD_COLOR)
+    imgFlash = cv2.imread(INPUT_FLASH, cv2.IMREAD_UNCHANGED)
+    imgNoFlash = cv2.imread(INPUT_NON_FLASH, cv2.IMREAD_UNCHANGED)
 
-    if img is not None:
-        sigmaIntensity = 20
-        sigmaDistance = 18
+    if imgFlash is not None:
+        sigmaIntensity = 100
+        sigmaDistance = 80
 
-        filtered = bilaterial_filter(
-            img, sigmaDistance, sigmaIntensity, kernelSize=5)
+        filtered = joint_bilateral_filter(
+            imgNoFlash, imgFlash, sigmaDistance, sigmaIntensity, kernelSize=5)
 
-        filtered_cv = cv2.bilateralFilter(
-            img, 5, sigmaIntensity, sigmaDistance)
-
-        cv2.imwrite('small_mine.png', filtered)
-        cv2.imwrite('small_cv2.png', filtered_cv)
+        cv2.imwrite('result.jpg', filtered)
     else:
-        print("Couldn't find image " + INPUT_IMAGE)
+        print("Couldn't find image " + INPUT_FLASH)
