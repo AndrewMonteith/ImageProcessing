@@ -51,37 +51,35 @@ def joint_bilateral_filter(imgNonFlash, imgFlash, sigmaDistance, sigmaIntensity,
     gaussDist = createGauss(sigmaDistance)
     gaussIntensity = createGauss(sigmaIntensity)
 
-    (height, width, _) = imgNonFlash.shape
+    (height, width, channels) = imgNonFlash.shape
 
-    intensities = [gaussIntensity(x) for x in range(0, 256)]
+    intensityCoefficients = [gaussIntensity(x) for x in range(0, 256)]
     
     def process_pixel(x, y):
-        newB, newG, newR = 0, 0, 0
-        normB, normG, normR = 0, 0, 0
+        newColours = [0]*channels
+        normalisationFactors = [0]*channels
 
-        (bF, gF, rF) = imgFlash[y, x]
-        
+        centerFlashVector = imgFlash[y, x]
+
+        coefficients = [0] * channels
         for (nX, nY) in neighbourhood(x, y, width, height, kernelSize):
-            (b, g, r) = imgNonFlash[nY, nX]
-            (nB, nG, nR) = imgFlash[nY, nX]
+            neighbourNonFlashVector = imgNonFlash[nY, nX]
+            neighbourFlashVector = imgFlash[nY, nX]
 
-            # Computing Coefficients
             distCoef = gaussDist(sqrt((x - nX)**2 + (y - nY)**2))
 
-            coefB = distCoef * intensities[abs(nB - bF)]
-            coefG = distCoef * intensities[abs(nG - gF)]
-            coefR = distCoef * intensities[abs(nR - rF)]
+            for i in range(0, channels):
+                coefficient = distCoef * intensityCoefficients[abs(neighbourFlashVector[i] - centerFlashVector[i])]
+                coefficients[i] = coefficient 
+                normalisationFactors[i] += coefficient
+                newColours[i] += coefficient * neighbourNonFlashVector[i]
 
-            normB += coefB
-            normG += coefG
-            normR += coefR
 
-            newB += (coefB * b)
-            newG += (coefG * g)
-            newR += (coefR * r)
-
-        return (newB / normB, newG / normG, newR / normR)
-
+        for i in range(0, channels):
+            newColours[i] = newColours[i] / normalisationFactors[i]
+        
+        return newColours
+        
     result = createBlank(width, height)
 
     for y in range(0, height):
@@ -97,11 +95,11 @@ if __name__ == "__main__":
     imgNoFlash = cv2.imread(INPUT_NON_FLASH, cv2.IMREAD_UNCHANGED)
 
     if imgFlash is not None:
-        sigmaIntensity = 100
-        sigmaDistance = 80
+        sigmaIntensity = 25
+        sigmaDistance = 2
 
         filtered = joint_bilateral_filter(
-            imgNoFlash, imgFlash, sigmaDistance, sigmaIntensity, kernelSize=5)
+            imgNoFlash, imgFlash, sigmaDistance, sigmaIntensity, kernelSize=20)
 
         cv2.imwrite('result.jpg', filtered)
     else:
