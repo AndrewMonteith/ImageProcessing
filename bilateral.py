@@ -14,10 +14,10 @@ INPUT_FLASH = 'test3b.jpg'
 # ------------------ / Filtering
 
 
-def createBlank(width, height, rgb_color=(0, 0, 0)):
+def createBlank(width, height, channels, rgb_color=(0, 0, 0)):
     """Create new image(numpy array) filled with certain color in RGB"""
     # Create black blank image
-    image = np.zeros((height, width, 3), np.uint8)
+    image = np.zeros((height, width, channels), np.uint8)
 
     # Since OpenCV uses BGR, convert the color first
     color = tuple(reversed(rgb_color))
@@ -80,7 +80,7 @@ def joint_bilateral_filter(imgNonFlash, imgFlash, sigmaDistance, sigmaIntensity,
         
         return newColours
         
-    result = createBlank(width, height)
+    result = createBlank(width, height, channels)
 
     for y in range(0, height):
         print(y, height)
@@ -95,12 +95,12 @@ if __name__ == "__main__":
     imgNoFlash = cv2.imread(INPUT_NON_FLASH, cv2.IMREAD_UNCHANGED)
 
     if imgFlash is not None:
-        sigmaIntensity = 25
-        sigmaDistance = 2
+        sigmaIntensity = 40
+        sigmaDistance = 0.1
 
         filtered = joint_bilateral_filter(
-            imgNoFlash, imgFlash, sigmaDistance, sigmaIntensity, kernelSize=20)
+            imgNoFlash, imgFlash, sigmaDistance, sigmaIntensity, kernelSize=5)
 
-        cv2.imwrite('result.jpg', filtered)
+        cv2.imwrite('result_lower_sigma.jpg', filtered)
     else:
         print("Couldn't find image " + INPUT_FLASH)
